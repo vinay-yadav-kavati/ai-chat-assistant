@@ -105,3 +105,39 @@ export async function deleteConversationByIdAndUser(
 
   return Boolean(data && data.length > 0);
 }
+
+
+/**
+ * Updates a conversation title while enforcing authenticated user ownership.
+ */
+export async function updateConversationTitle(
+  conversationId: string,
+  userId: string,
+  title: string,
+  token?: string
+): Promise<Conversation> {
+  const client = getClient(token);
+
+  const cleanTitle = title.trim().slice(0, 60);
+
+  const { data, error } = await client
+    .from('conversations')
+    .update({
+      title: cleanTitle,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId)
+    .eq('user_id', userId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to update conversation title: ${
+        error?.message || 'Unknown database error'
+      }`
+    );
+  }
+
+  return data as Conversation;
+}

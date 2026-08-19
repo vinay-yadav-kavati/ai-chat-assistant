@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { updateConversationTitle } from "../services/conversation.service.js";
 import {
   getMessagesByConversationIdAndUser,
   insertMessageForUser,
@@ -81,10 +82,25 @@ export async function handleChat(
     await insertMessageForUser(
       conversationId,
       userId,
-      'user',
+      "user",
       userPrompt,
-      req.token
+      req.token,
     );
+
+    // Generate the conversation title from the first user message.
+    if (existingMessages.length === 0) {
+      try {
+        const title =
+          userPrompt.length > 57
+            ? `${userPrompt.slice(0, 57).trim()}...`
+            : userPrompt;
+
+        await updateConversationTitle(conversationId, userId, title, req.token);
+      } catch (titleError) {
+        // Title generation should not prevent the chat response from succeeding.
+        console.error("Failed to update conversation title:", titleError);
+      }
+    }
 
     // 4. Persist assistant response to Supabase
     const assistantMessage = await insertMessageForUser(
