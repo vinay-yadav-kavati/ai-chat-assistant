@@ -10,7 +10,7 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: "http://localhost:5173",
+      origin: "https://ai-chat-assistant-frontend-rgy0.onrender.com",
       credentials: true,
     }),
   );
