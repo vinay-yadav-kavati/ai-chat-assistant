@@ -1,0 +1,6 @@
+{
+  "name": "AI Chat Assistant",
+  "description": "An AI Chat Assistant with conversation memory powered by Express, Supabase, and Google Gemini API.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
