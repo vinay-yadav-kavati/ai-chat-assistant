@@ -3,12 +3,14 @@ import { Send, Loader2 } from 'lucide-react';
 
 interface MessageComposerProps {
   onSend: (content: string) => void;
+  onCancel?: () => void;
   disabled?: boolean;
   placeholder?: string;
 }
 
 export const MessageComposer: React.FC<MessageComposerProps> = ({
   onSend,
+  onCancel,
   disabled = false,
   placeholder = 'Type a message... (Press Enter to send, Shift+Enter for new line)',
 }) => {
@@ -62,22 +64,25 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className="flex-1 max-h-40 min-h-[44px] py-2.5 px-3.5 text-sm text-neutral-900 placeholder:text-neutral-400 bg-neutral-50 hover:bg-neutral-100/60 focus:bg-white border border-neutral-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all resize-none disabled:opacity-50 disabled:bg-neutral-100 disabled:cursor-not-allowed leading-relaxed"
+          className="flex-1 max-h-40 min-h-11 py-2.5 px-3.5 text-sm text-neutral-900 placeholder:text-neutral-400 bg-neutral-50 hover:bg-neutral-100/60 focus:bg-white border border-neutral-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all resize-none disabled:opacity-50 disabled:bg-neutral-100 disabled:cursor-not-allowed leading-relaxed"
         />
 
         <button
-          id="btn-send-message"
-          type="submit"
-          disabled={disabled || !content.trim()}
-          aria-label="Send message"
+          id={disabled ? "btn-cancel-message" : "btn-send-message"}
+          type={disabled ? "button" : "submit"}
+          onClick={disabled ? onCancel : undefined}
+          disabled={!disabled && !content.trim()}
+          aria-label={disabled ? "Cancel response" : "Send message"}
+          title={disabled ? "Cancel response" : "Send message"}
           className="h-[44px] w-[44px] flex items-center justify-center text-white bg-neutral-900 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all shadow-xs shrink-0"
         >
           {disabled ? (
-            <Loader2 className="w-4 h-4 animate-spin text-neutral-300" />
+            <span className="text-sm font-medium cursor-pointer">✕</span>
           ) : (
             <Send className="w-4 h-4" />
           )}
         </button>
+
       </form>
       <p className="text-[11px] text-neutral-400 text-center mt-2 hidden sm:block">
         AI Chat Assistant · Powered by Gemini · Built with Supabase Memory

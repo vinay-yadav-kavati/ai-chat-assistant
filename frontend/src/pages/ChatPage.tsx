@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef} from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import { Conversation, Message } from '../types';
@@ -20,6 +20,7 @@ export const ChatPage: React.FC = () => {
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // 1. Fetch user conversations from backend on mount or token change
   const loadConversations = useCallback(async () => {
@@ -125,6 +126,16 @@ export const ChatPage: React.FC = () => {
     }
   };
 
+  //handle cancel message
+  const handleCancelMessage = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    setIsSendingMessage(false);
+  };
+
   // 6. Send user message & receive assistant response
   const handleSendMessage = async (content: string) => {
     if (!token || isSendingMessage || !content.trim()) return;
@@ -164,28 +175,49 @@ export const ChatPage: React.FC = () => {
     setError(null);
 
     try {
-      const assistantMessage = await api.sendChatMessage(targetConvId, trimmed, token);
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      const assistantMessage = await api.sendChatMessage(
+        targetConvId,
+        trimmed,
+        token,
+        abortController.signal,
+      );
       // Append assistant message upon successful response
       setMessages((prev) => [...prev, assistantMessage]);
 
       // If the conversation was named "New Chat", update its title from first message snippet
       setConversations((prev) =>
         prev.map((c) => {
-          if (c.id === targetConvId && (c.title === 'New Chat' || !c.title)) {
+          if (c.id === targetConvId && (c.title === "New Chat" || !c.title)) {
             return {
               ...c,
-              title: trimmed.length > 30 ? `${trimmed.slice(0, 30)}...` : trimmed,
+              title:
+                trimmed.length > 30 ? `${trimmed.slice(0, 30)}...` : trimmed,
             };
           }
           return c;
-        })
+        }),
       );
     } catch (err: any) {
-      console.error('Failed to send message:', err);
-      setError(err?.message || 'Failed to generate response. Please try again.');
-      // Remove optimistic message if submission completely failed
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticUserMessage.id));
+      if (err?.name === "AbortError") {
+        // User cancelled the request.
+        setMessages((prev) =>
+          prev.filter((m) => m.id !== optimisticUserMessage.id),
+        );
+        return;
+      }
+
+      console.error("Failed to send message:", err);
+      setError(
+        err?.message || "Failed to generate response. Please try again.",
+      );
+
+      setMessages((prev) =>
+        prev.filter((m) => m.id !== optimisticUserMessage.id),
+      );
     } finally {
+      abortControllerRef.current = null;
       setIsSendingMessage(false);
     }
   };
@@ -193,7 +225,10 @@ export const ChatPage: React.FC = () => {
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
   return (
-    <div id="chat-page-root" className="flex h-screen w-screen bg-white overflow-hidden font-sans">
+    <div
+      id="chat-page-root"
+      className="flex h-screen w-screen bg-white overflow-hidden font-sans"
+    >
       {/* Sidebar */}
       <Sidebar
         conversations={conversations}
@@ -212,7 +247,7 @@ export const ChatPage: React.FC = () => {
       {/* Main Chat Area */}
       <main className="flex-1 flex flex-col h-full min-w-0 bg-white relative overflow-hidden">
         <ChatHeader
-          title={activeConversation?.title || 'AI Chat Assistant'}
+          title={activeConversation?.title || "AI Chat Assistant"}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           onNewChat={handleNewChat}
         />
@@ -228,11 +263,12 @@ export const ChatPage: React.FC = () => {
 
         <MessageComposer
           onSend={handleSendMessage}
+          onCancel={handleCancelMessage}
           disabled={isSendingMessage || isLoadingMessages || isCreatingChat}
           placeholder={
             !activeConversationId
-              ? 'Type a message to start a new chat...'
-              : 'Type a message... (Press Enter to send, Shift+Enter for new line)'
+              ? "Type a message to start a new chat..."
+              : "Type a message... (Press Enter to send, Shift+Enter for new line)"
           }
         />
       </main>

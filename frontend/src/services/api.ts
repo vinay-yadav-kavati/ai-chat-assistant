@@ -18,25 +18,30 @@ export const api = {
   async getConversations(token: string): Promise<Conversation[]> {
     const res = await fetch(`${API_BASE}/conversations`, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to fetch conversations (${res.status})`);
+      throw new Error(
+        err?.error?.message || `Failed to fetch conversations (${res.status})`,
+      );
     }
 
     const data = await res.json();
     return data.conversations || [];
   },
 
-  async createConversation(token: string, title?: string): Promise<Conversation> {
+  async createConversation(
+    token: string,
+    title?: string,
+  ): Promise<Conversation> {
     const res = await fetch(`${API_BASE}/conversations`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(title ? { title } : {}),
@@ -44,24 +49,31 @@ export const api = {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to create conversation (${res.status})`);
+      throw new Error(
+        err?.error?.message || `Failed to create conversation (${res.status})`,
+      );
     }
 
     const data = await res.json();
     return data.conversation;
   },
 
-  async getConversationById(id: string, token: string): Promise<ConversationWithMessages> {
+  async getConversationById(
+    id: string,
+    token: string,
+  ): Promise<ConversationWithMessages> {
     const res = await fetch(`${API_BASE}/conversations/${id}`, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to fetch conversation (${res.status})`);
+      throw new Error(
+        err?.error?.message || `Failed to fetch conversation (${res.status})`,
+      );
     }
 
     return res.json();
@@ -69,30 +81,37 @@ export const api = {
 
   async deleteConversation(id: string, token: string): Promise<void> {
     const res = await fetch(`${API_BASE}/conversations/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to delete conversation (${res.status})`);
+      throw new Error(
+        err?.error?.message || `Failed to delete conversation (${res.status})`,
+      );
     }
   },
 
   async getMessages(conversationId: string, token: string): Promise<Message[]> {
-    const res = await fetch(`${API_BASE}/conversations/${conversationId}/messages`, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const res = await fetch(
+      `${API_BASE}/conversations/${conversationId}/messages`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       },
-    });
+    );
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to load messages (${res.status})`);
+      throw new Error(
+        err?.error?.message || `Failed to load messages (${res.status})`,
+      );
     }
 
     const data = await res.json();
@@ -101,22 +120,27 @@ export const api = {
 
   async addMessage(
     conversationId: string,
-    role: 'user' | 'assistant',
+    role: "user" | "assistant",
     content: string,
-    token: string
+    token: string,
   ): Promise<Message> {
-    const res = await fetch(`${API_BASE}/conversations/${conversationId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const res = await fetch(
+      `${API_BASE}/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role, content }),
       },
-      body: JSON.stringify({ role, content }),
-    });
+    );
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to add message (${res.status})`);
+      throw new Error(
+        err?.error?.message || `Failed to add message (${res.status})`,
+      );
     }
 
     const data = await res.json();
@@ -130,20 +154,27 @@ export const api = {
   async sendChatMessage(
     conversationId: string,
     content: string,
-    token: string
+    token: string,
+    signal?: AbortSignal,
   ): Promise<Message> {
-    const res = await fetch(`${API_BASE}/conversations/${conversationId}/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const res = await fetch(
+      `${API_BASE}/conversations/${conversationId}/chat`,
+      {
+        method: "POST",
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content }),
       },
-      body: JSON.stringify({ content }),
-    });
+    );
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Chat request failed (${res.status})`);
+      throw new Error(
+        err?.error?.message || `Chat request failed (${res.status})`,
+      );
     }
 
     const data = await res.json();
