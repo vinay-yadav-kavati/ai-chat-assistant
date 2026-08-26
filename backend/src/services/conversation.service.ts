@@ -115,7 +115,7 @@ export async function updateConversationTitle(
   userId: string,
   title: string,
   token?: string
-): Promise<Conversation> {
+): Promise<Conversation | null> {
   const client = getClient(token);
 
   const cleanTitle = title.trim().slice(0, 60);
@@ -129,15 +129,11 @@ export async function updateConversationTitle(
     .eq('id', conversationId)
     .eq('user_id', userId)
     .select('*')
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
-    throw new Error(
-      `Failed to update conversation title: ${
-        error?.message || 'Unknown database error'
-      }`
-    );
+  if (error) {
+    throw new Error(`Failed to update conversation title: ${error.message}`);
   }
 
-  return data as Conversation;
+  return data ? (data as Conversation) : null;
 }

@@ -5,6 +5,7 @@ import {
   createConversation,
   getConversationById,
   deleteConversation,
+  updateConversation,
 } from '../controllers/conversation.controller.js';
 import {
   getMessages,
@@ -21,6 +22,7 @@ router.use(authMiddleware);
 router.get('/', getConversations);
 router.post('/', createConversation);
 router.get('/:id', getConversationById);
+router.patch('/:id', updateConversation);
 router.delete('/:id', deleteConversation);
 
 // Message endpoints

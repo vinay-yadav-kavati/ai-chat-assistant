@@ -21,6 +21,7 @@ export const ChatPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const createdConvIdRef = useRef<string | null>(null);
 
   // 1. Fetch user conversations from backend on mount or token change
   const loadConversations = useCallback(async () => {
@@ -32,48 +33,67 @@ export const ChatPage: React.FC = () => {
       setConversations(convs);
 
       // Auto-select first conversation if exists and none currently selected
-      if (convs.length > 0 && !activeConversationId) {
-        setActiveConversationId(convs[0].id);
-      }
+      setActiveConversationId((prev) => {
+        if (!prev && convs.length > 0) {
+          return convs[0].id;
+        }
+        return prev;
+      });
     } catch (err: any) {
       console.error('Failed to load conversations:', err);
       setError(err?.message || 'Failed to load conversations from server.');
     } finally {
       setIsLoadingConversations(false);
     }
-  }, [token, activeConversationId]);
+  }, [token]);
 
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
 
   // 2. Fetch conversation details & messages when active conversation changes
-  const loadMessages = useCallback(
-    async (conversationId: string) => {
-      if (!token) return;
-      setIsLoadingMessages(true);
-      setError(null);
-      try {
-        const details = await api.getConversationById(conversationId, token);
-        setMessages(details.messages || []);
-      } catch (err: any) {
-        console.error('Failed to load messages for conversation:', err);
-        setError(err?.message || 'Failed to load messages.');
-        setMessages([]);
-      } finally {
-        setIsLoadingMessages(false);
-      }
-    },
-    [token]
-  );
-
   useEffect(() => {
-    if (activeConversationId) {
-      loadMessages(activeConversationId);
-    } else {
+    if (!activeConversationId) {
       setMessages([]);
+      return;
     }
-  }, [activeConversationId, loadMessages]);
+
+    // Skip network fetch if this conversation was freshly created locally and already initialized
+    if (createdConvIdRef.current === activeConversationId) {
+      createdConvIdRef.current = null;
+      return;
+    }
+
+    if (!token) return;
+
+    let isCurrent = true;
+    setIsLoadingMessages(true);
+    setError(null);
+
+    api
+      .getConversationById(activeConversationId, token)
+      .then((details) => {
+        if (isCurrent) {
+          setMessages(details.messages || []);
+        }
+      })
+      .catch((err: any) => {
+        if (isCurrent) {
+          console.error('Failed to load messages for conversation:', err);
+          setError(err?.message || 'Failed to load messages.');
+          setMessages([]);
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsLoadingMessages(false);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeConversationId, token]);
 
   // 3. Create a new conversation
   const handleNewChat = async () => {
@@ -82,6 +102,7 @@ export const ChatPage: React.FC = () => {
     setError(null);
     try {
       const newConv = await api.createConversation(token);
+      createdConvIdRef.current = newConv.id;
       setConversations((prev) => [newConv, ...prev]);
       setActiveConversationId(newConv.id);
       setMessages([]);
@@ -101,9 +122,25 @@ export const ChatPage: React.FC = () => {
     setIsSidebarOpen(false);
   };
 
-  // 5. Delete conversation
-  const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  // 5. Rename conversation
+  const handleRenameConversation = async (id: string, newTitle: string) => {
+    if (!token) return;
+
+    try {
+      const updated = await api.updateConversation(id, newTitle, token);
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, title: updated.title } : c))
+      );
+    } catch (err: any) {
+      console.error('Failed to rename conversation:', err);
+      setError(err?.message || 'Failed to rename conversation.');
+      throw err;
+    }
+  };
+
+  // 6. Delete conversation
+  const handleDeleteConversation = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!token) return;
 
     try {
@@ -123,6 +160,7 @@ export const ChatPage: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to delete conversation:', err);
       setError(err?.message || 'Failed to delete conversation.');
+      throw err;
     }
   };
 
@@ -136,7 +174,7 @@ export const ChatPage: React.FC = () => {
     setIsSendingMessage(false);
   };
 
-  // 6. Send user message & receive assistant response
+  // 7. Send user message & receive assistant response
   const handleSendMessage = async (content: string) => {
     if (!token || isSendingMessage || !content.trim()) return;
 
@@ -147,6 +185,7 @@ export const ChatPage: React.FC = () => {
       try {
         setIsCreatingChat(true);
         const newConv = await api.createConversation(token);
+        createdConvIdRef.current = newConv.id;
         setConversations((prev) => [newConv, ...prev]);
         setActiveConversationId(newConv.id);
         targetConvId = newConv.id;
@@ -227,7 +266,7 @@ export const ChatPage: React.FC = () => {
   return (
     <div
       id="chat-page-root"
-      className="flex h-screen w-screen bg-white overflow-hidden font-sans"
+      className="flex h-screen h-[100dvh] w-full bg-white overflow-hidden font-sans"
     >
       {/* Sidebar */}
       <Sidebar
@@ -235,8 +274,10 @@ export const ChatPage: React.FC = () => {
         activeId={activeConversationId}
         onSelectConversation={handleSelectConversation}
         onNewChat={handleNewChat}
+        onRenameConversation={handleRenameConversation}
         onDeleteConversation={handleDeleteConversation}
         userEmail={user?.email}
+        isAnonymous={user?.is_anonymous}
         onSignOut={signOut}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -245,7 +286,7 @@ export const ChatPage: React.FC = () => {
       />
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col h-full min-w-0 bg-white relative overflow-hidden">
+      <main className="flex-1 flex flex-col h-full min-w-0 min-h-0 bg-white relative overflow-hidden">
         <ChatHeader
           title={activeConversation?.title || "AI Chat Assistant"}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
@@ -267,8 +308,8 @@ export const ChatPage: React.FC = () => {
           disabled={isSendingMessage || isLoadingMessages || isCreatingChat}
           placeholder={
             !activeConversationId
-              ? "Type a message to start a new chat..."
-              : "Type a message... (Press Enter to send, Shift+Enter for new line)"
+              ? "Start a conversation with Nexa..."
+              : "Ask Nexa..."
           }
         />
       </main>

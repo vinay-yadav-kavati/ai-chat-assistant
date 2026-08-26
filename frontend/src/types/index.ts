@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   email?: string;
+  is_anonymous?: boolean;
 }
 
 export interface Conversation {

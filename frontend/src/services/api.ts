@@ -79,6 +79,31 @@ export const api = {
     return res.json();
   },
 
+  async updateConversation(
+    id: string,
+    title: string,
+    token: string
+  ): Promise<Conversation> {
+    const res = await fetch(`${API_BASE}/conversations/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ title }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(
+        err?.error?.message || `Failed to update conversation (${res.status})`,
+      );
+    }
+
+    const data = await res.json();
+    return data.conversation;
+  },
+
   async deleteConversation(id: string, token: string): Promise<void> {
     const res = await fetch(`${API_BASE}/conversations/${id}`, {
       method: "DELETE",

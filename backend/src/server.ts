@@ -8,12 +8,17 @@ import { errorMiddleware } from "./middleware/error.middleware.js";
 export function createApp() {
   const app = express();
 
-  app.use(
-    cors({
-      origin: "https://ai-chat-assistant-frontend-rgy0.onrender.com",
-      credentials: true,
-    }),
-  );
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://ai-chat-assistant-frontend-rgy0.onrender.com',
+];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
 
   app.use(express.json());
 

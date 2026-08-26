@@ -10,8 +10,14 @@ export interface AuthState {
   isLoading: boolean;
   isConfigured: boolean;
   error: string | null;
+  isRecoveryMode: boolean;
+  recoveryError: string | null;
+  setIsRecoveryMode: (mode: boolean) => void;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | Error | null; needsEmailConfirmation?: boolean }>;
+  signInAnonymously: () => Promise<{ error: AuthError | Error | null }>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: AuthError | Error | null }>;
+  updatePassword: (password: string) => Promise<{ error: AuthError | Error | null }>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -22,12 +28,34 @@ export function useAuth(): AuthState {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRecoveryMode, setIsRecoveryMode] = useState<boolean>(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
   const clearError = useCallback(() => {
     setError(null);
+    setRecoveryError(null);
   }, []);
 
   useEffect(() => {
+    // Check URL parameters / hash for recovery tokens or errors
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+
+      if (hash.includes('error=') || search.includes('error=')) {
+        const rawParams = hash.includes('error=') ? hash.replace(/^#/, '') : search.replace(/^\?/, '');
+        const params = new URLSearchParams(rawParams);
+        const errorDesc = params.get('error_description') || params.get('error');
+        if (errorDesc) {
+          const decoded = decodeURIComponent(errorDesc.replace(/\+/g, ' '));
+          setRecoveryError(decoded);
+          setIsRecoveryMode(true);
+        }
+      } else if (hash.includes('type=recovery') || search.includes('type=recovery')) {
+        setIsRecoveryMode(true);
+      }
+    }
+
     if (!supabase || !isSupabaseConfigured) {
       setIsLoading(false);
       return;
@@ -46,6 +74,7 @@ export function useAuth(): AuthState {
           setUser({
             id: data.session.user.id,
             email: data.session.user.email,
+            is_anonymous: data.session.user.is_anonymous,
           });
         }
       })
@@ -56,15 +85,21 @@ export function useAuth(): AuthState {
         setIsLoading(false);
       });
 
-    // 2. Listen for auth state changes (sign in, sign out, token refresh)
+    // 2. Listen for auth state changes (sign in, sign out, token refresh, password recovery)
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, currentSession) => {
+      (event, currentSession) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsRecoveryMode(true);
+          setRecoveryError(null);
+        }
+
         setSession(currentSession);
         if (currentSession) {
           setToken(currentSession.access_token);
           setUser({
             id: currentSession.user.id,
             email: currentSession.user.email,
+            is_anonymous: currentSession.user.is_anonymous,
           });
         } else {
           setToken(null);
@@ -135,11 +170,132 @@ export function useAuth(): AuthState {
           return { error: signUpError };
         }
 
-        // If email confirmation is enabled in Supabase, user session won't exist immediately
+        // If email confirmation is disabled in Supabase, an active session is returned automatically.
+        // Sign out to guarantee user is redirected to Sign In and must enter their password to continue.
+        if (data.session) {
+          await supabase.auth.signOut();
+        }
+
         const needsEmailConfirmation = !data.session;
         return { error: null, needsEmailConfirmation };
       } catch (err: any) {
         const fallbackError = new Error(err.message || 'An unexpected sign-up error occurred.');
+        setError(fallbackError.message);
+        return { error: fallbackError };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  const signInAnonymously = useCallback(async (): Promise<{ error: AuthError | Error | null }> => {
+    if (!supabase) {
+      const err = new Error('Supabase is not configured. Please provide VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+      setError(err.message);
+      return { error: err };
+    }
+
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const { data, error: anonError } = await supabase.auth.signInAnonymously();
+
+      if (anonError) {
+        setError(anonError.message);
+        return { error: anonError };
+      }
+
+      if (data.session) {
+        setSession(data.session);
+        setToken(data.session.access_token);
+        setUser({
+          id: data.session.user.id,
+          email: data.session.user.email,
+          is_anonymous: data.session.user.is_anonymous,
+        });
+      }
+
+      return { error: null };
+    } catch (err: any) {
+      const fallbackError = new Error(err.message || 'An unexpected error occurred during anonymous sign-in.');
+      setError(fallbackError.message);
+      return { error: fallbackError };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const resetPasswordForEmail = useCallback(
+    async (email: string): Promise<{ error: AuthError | Error | null }> => {
+      if (!supabase) {
+        const err = new Error('Supabase is not configured. Please provide VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+        setError(err.message);
+        return { error: err };
+      }
+
+      setError(null);
+      setIsLoading(true);
+
+      try {
+        const redirectTo = typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : undefined;
+
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo,
+        });
+
+        if (resetError) {
+          setError(resetError.message);
+          return { error: resetError };
+        }
+
+        return { error: null };
+      } catch (err: any) {
+        const fallbackError = new Error(err.message || 'An unexpected error occurred while requesting password reset.');
+        setError(fallbackError.message);
+        return { error: fallbackError };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  const updatePassword = useCallback(
+    async (newPassword: string): Promise<{ error: AuthError | Error | null }> => {
+      if (!supabase) {
+        const err = new Error('Supabase is not configured. Please provide VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+        setError(err.message);
+        return { error: err };
+      }
+
+      setError(null);
+      setIsLoading(true);
+
+      try {
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+
+        if (updateError) {
+          setError(updateError.message);
+          return { error: updateError };
+        }
+
+        setIsRecoveryMode(false);
+        setRecoveryError(null);
+
+        // Clean up hash parameters from URL
+        if (typeof window !== 'undefined' && (window.location.hash || window.location.search)) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+
+        return { error: null };
+      } catch (err: any) {
+        const fallbackError = new Error(err.message || 'An unexpected error occurred while updating password.');
         setError(fallbackError.message);
         return { error: fallbackError };
       } finally {
@@ -154,6 +310,7 @@ export function useAuth(): AuthState {
       setUser(null);
       setSession(null);
       setToken(null);
+      setIsRecoveryMode(false);
       return;
     }
 
@@ -168,6 +325,7 @@ export function useAuth(): AuthState {
       setUser(null);
       setSession(null);
       setToken(null);
+      setIsRecoveryMode(false);
     } catch (err: any) {
       setError(err.message || 'An error occurred during sign out.');
     } finally {
@@ -182,9 +340,16 @@ export function useAuth(): AuthState {
     isLoading,
     isConfigured: isSupabaseConfigured,
     error,
+    isRecoveryMode,
+    recoveryError,
+    setIsRecoveryMode,
     signIn,
     signUp,
+    signInAnonymously,
+    resetPasswordForEmail,
+    updatePassword,
     signOut,
     clearError,
   };
 }
+

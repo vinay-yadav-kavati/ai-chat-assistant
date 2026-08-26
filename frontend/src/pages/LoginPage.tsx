@@ -1,18 +1,21 @@
 import React, { useState, FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Lock, Mail, AlertCircle, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
+import { Lock, Mail, AlertCircle, CheckCircle2, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 
 interface LoginPageProps {
   onLoginSuccess?: () => void;
+  onForgotPassword?: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const { signIn, signUp, isLoading, error: authError, isConfigured } = useAuth();
+export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onForgotPassword }) => {
+  const { signIn, signUp, signInAnonymously, isLoading, error: authError, isConfigured } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -24,8 +27,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       return;
     }
 
+    if (mode === 'signup' && !confirmPassword) {
+      setLocalError('Please confirm your password.');
+      return;
+    }
+
     if (password.length < 6) {
       setLocalError('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (mode === 'signup' && password !== confirmPassword) {
+      setLocalError('Passwords do not match.');
       return;
     }
 
@@ -35,15 +48,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         onLoginSuccess?.();
       }
     } else {
-      const result = await signUp(email, password);
+      const registeredEmail = email.trim();
+      const result = await signUp(registeredEmail, password);
       if (!result.error) {
-        if (result.needsEmailConfirmation) {
-          setSuccessMessage('Sign up successful! Please check your email to confirm your account, or sign in if confirmation is disabled.');
-        } else {
-          setSuccessMessage('Account created successfully!');
-          onLoginSuccess?.();
-        }
+        setMode('signin');
+        setEmail(registeredEmail);
+        setPassword('');
+        setConfirmPassword('');
+        setLocalError(null);
+        setSuccessMessage('Account created successfully. Please sign in to continue.');
       }
+    }
+  };
+
+  const handleDemoSignIn = async () => {
+    setLocalError(null);
+    setSuccessMessage(null);
+    setIsDemoLoading(true);
+
+    try {
+      const result = await signInAnonymously();
+      if (!result.error) {
+        onLoginSuccess?.();
+      }
+    } finally {
+      setIsDemoLoading(false);
     }
   };
 
@@ -102,14 +131,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                disabled={isLoading || !isConfigured}
+                disabled={isLoading || isDemoLoading || !isConfigured}
                 className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-neutral-800 disabled:bg-neutral-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-neutral-700">Password</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-neutral-700">Password</label>
+              {mode === 'signin' && onForgotPassword && (
+                <button
+                  id="btn-forgot-password"
+                  type="button"
+                  onClick={onForgotPassword}
+                  className="text-xs text-neutral-600 hover:text-neutral-900 font-medium hover:underline transition-colors cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-2.5" />
               <input
@@ -120,20 +161,40 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                disabled={isLoading || !isConfigured}
+                disabled={isLoading || isDemoLoading || !isConfigured}
                 className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-neutral-800 disabled:bg-neutral-100 disabled:cursor-not-allowed"
               />
             </div>
             <p className="text-[11px] text-neutral-400">Minimum 6 characters</p>
           </div>
 
+          {mode === 'signup' && (
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-neutral-700">Confirm Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-2.5" />
+                <input
+                  id="signup-confirm-password-input"
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  disabled={isLoading || isDemoLoading || !isConfigured}
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-neutral-800 disabled:bg-neutral-100 disabled:cursor-not-allowed"
+                />
+              </div>
+            </div>
+          )}
+
           <button
             id="btn-auth-submit"
             type="submit"
-            disabled={isLoading || !isConfigured}
+            disabled={isLoading || isDemoLoading || !isConfigured}
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium text-white bg-neutral-900 rounded-md hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
-            {isLoading ? (
+            {isLoading && !isDemoLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Processing...</span>
@@ -147,6 +208,44 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </button>
         </form>
 
+        {mode === 'signin' && (
+          <>
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-neutral-200" />
+              </div>
+              <div className="relative bg-white px-3 text-[11px] uppercase tracking-wider text-neutral-400 font-medium">
+                or
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                id="btn-try-demo"
+                type="button"
+                onClick={handleDemoSignIn}
+                disabled={isLoading || isDemoLoading || !isConfigured}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium text-neutral-700 bg-neutral-100 hover:bg-neutral-200/80 border border-neutral-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                {isDemoLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-neutral-600" />
+                    <span>Starting demo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-neutral-600" />
+                    <span>Try Nexa Demo</span>
+                  </>
+                )}
+              </button>
+              <p className="text-center text-[11px] text-neutral-400 leading-normal">
+                No account required. Your demo session is temporary.
+              </p>
+            </div>
+          </>
+        )}
+
         <div className="pt-4 border-t border-neutral-200 text-center">
           <button
             id="btn-toggle-auth-mode"
@@ -155,6 +254,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               setMode(mode === 'signin' ? 'signup' : 'signin');
               setLocalError(null);
               setSuccessMessage(null);
+              setPassword('');
+              setConfirmPassword('');
             }}
             className="text-xs text-neutral-600 hover:text-neutral-900 font-medium hover:underline transition-colors cursor-pointer"
           >
@@ -167,3 +268,4 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     </div>
   );
 };
+

@@ -31,7 +31,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     return (
       <div
         id="no-conversation-empty-state"
-        className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-neutral-50/50"
+        className="flex-1 min-h-0 flex flex-col items-center justify-center p-6 text-center bg-neutral-50/50 overflow-y-auto"
       >
         <div className="w-12 h-12 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-neutral-400 mb-4 shadow-xs">
           <Bot className="w-6 h-6" />
@@ -60,7 +60,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     return (
       <div
         id="new-conversation-empty-state"
-        className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-neutral-50/50"
+        className="flex-1 min-h-0 flex flex-col items-center justify-center p-6 text-center bg-neutral-50/50 overflow-y-auto"
       >
         <div className="w-12 h-12 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-neutral-400 mb-4 shadow-xs">
           <Sparkles className="w-6 h-6 text-neutral-500" />
@@ -76,7 +76,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   return (
     <div
       id="message-list-container"
-      className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 bg-neutral-50/30"
+      className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 space-y-5 bg-neutral-50/30"
     >
       {/* Optional Error Banner */}
       {error && (

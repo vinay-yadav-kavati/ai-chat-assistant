@@ -5,6 +5,7 @@ import {
   getConversationsByUserId,
   getConversationByIdAndUser,
   deleteConversationByIdAndUser,
+  updateConversationTitle,
 } from '../services/conversation.service.js';
 import { getMessagesByConversationIdAndUser } from '../services/message.service.js';
 
@@ -157,3 +158,55 @@ export async function deleteConversation(
     });
   }
 }
+
+/**
+ * PATCH /api/conversations/:id
+ * Update a conversation title belonging to the authenticated user.
+ */
+export async function updateConversation(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({
+        error: { code: 'UNAUTHORIZED', message: 'User is not authenticated.' },
+      });
+      return;
+    }
+
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({
+        error: { code: 'INVALID_INPUT', message: 'Conversation ID is required.' },
+      });
+      return;
+    }
+
+    const { title } = req.body;
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      res.status(400).json({
+        error: { code: 'INVALID_INPUT', message: 'Conversation title is required and cannot be empty.' },
+      });
+      return;
+    }
+
+    const updated = await updateConversationTitle(id, userId, title, req.token);
+    if (!updated) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Conversation not found or does not belong to user.' },
+      });
+      return;
+    }
+
+    res.json({
+      conversation: updated,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      error: { code: 'INTERNAL_ERROR', message: err.message || 'Failed to update conversation.' },
+    });
+  }
+}
+

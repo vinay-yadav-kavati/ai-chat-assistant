@@ -12,7 +12,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   onSend,
   onCancel,
   disabled = false,
-  placeholder = 'Type a message... (Press Enter to send, Shift+Enter for new line)',
+  placeholder = 'Ask Nexa',
 }) => {
   const [content, setContent] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -49,11 +49,11 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   return (
     <div
       id="message-composer-container"
-      className="p-3 md:p-4 border-t border-neutral-200 bg-white"
+      className="p-3 md:p-4 border-t border-neutral-200 bg-white shrink-0 z-20"
     >
       <form
         onSubmit={handleSubmit}
-        className="relative flex items-end gap-2 max-w-4xl mx-auto"
+        className="relative flex items-end gap-2 max-w-4xl mx-auto w-full"
       >
         <textarea
           ref={textareaRef}
