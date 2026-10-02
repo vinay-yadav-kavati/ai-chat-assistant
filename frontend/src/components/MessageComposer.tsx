@@ -84,9 +84,6 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
         </button>
 
       </form>
-      <p className="text-[11px] text-neutral-400 text-center mt-2 hidden sm:block">
-        AI Chat Assistant · Powered by Gemini · Built with Supabase Memory
-      </p>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Message } from '../types';
-import { Bot, User as UserIcon, AlertCircle, Plus, Sparkles, Loader2 } from 'lucide-react';
+import { Bot, User as UserIcon, AlertCircle, Plus, Sparkles } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface MessageListProps {
@@ -148,12 +148,21 @@ export const MessageList: React.FC<MessageListProps> = ({
       {/* Assistant Loading Indicator */}
       {isLoading && (
         <div id="message-loading-indicator" className="flex items-start gap-2.5 justify-start">
-          <div className="w-7 h-7 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-700 shrink-0 mt-0.5 shadow-xs">
+          <div
+            className="w-7 h-7 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-700 shrink-0 mt-0.5 shadow-xs"
+            title="AI Assistant"
+          >
             <Bot className="w-3.5 h-3.5" />
           </div>
-          <div className="bg-white border border-neutral-200 rounded-2xl rounded-tl-xs px-4 py-3 text-sm text-neutral-500 shadow-xs flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-neutral-600" />
-            <span>Nexa is thinking...</span>
+          <div
+            className="bg-white border border-neutral-200 rounded-2xl rounded-tl-xs px-4 py-3.5 shadow-xs flex items-center gap-1.5"
+            role="status"
+            aria-label="Nexa is generating a response"
+          >
+            <span className="w-2 h-2 rounded-full bg-neutral-600 inline-block animate-typing-dot-1" />
+            <span className="w-2 h-2 rounded-full bg-neutral-600 inline-block animate-typing-dot-2" />
+            <span className="w-2 h-2 rounded-full bg-neutral-600 inline-block animate-typing-dot-3" />
+            <span className="sr-only">Nexa is typing...</span>
           </div>
         </div>
       )}

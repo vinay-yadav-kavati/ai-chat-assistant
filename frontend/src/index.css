@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+@keyframes typing-pulse {
+  0%, 100% {
+    transform: scale(0.7);
+    opacity: 0.35;
+  }
+  40% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.animate-typing-dot-1 {
+  animation: typing-pulse 1.3s infinite ease-in-out both;
+}
+
+.animate-typing-dot-2 {
+  animation: typing-pulse 1.3s infinite ease-in-out 0.2s both;
+}
+
+.animate-typing-dot-3 {
+  animation: typing-pulse 1.3s infinite ease-in-out 0.4s both;
+}
