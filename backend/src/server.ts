@@ -3,6 +3,7 @@ import cors from "cors";
 import { config } from "./lib/config.js";
 import healthRoutes from "./routes/health.routes.js";
 import conversationRoutes from "./routes/conversation.routes.js";
+import documentRoutes from "./routes/document.routes.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 
 export function createApp() {
@@ -24,6 +25,7 @@ app.use(
 
   app.use("/api", healthRoutes);
   app.use("/api/conversations", conversationRoutes);
+  app.use("/api/documents", documentRoutes);
 
   app.use(errorMiddleware);
 

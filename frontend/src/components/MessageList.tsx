@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Message } from '../types';
 import { Bot, User as UserIcon, AlertCircle, Plus, Sparkles, Loader2 } from 'lucide-react';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface MessageListProps {
   messages: Message[];
@@ -118,15 +119,19 @@ export const MessageList: React.FC<MessageListProps> = ({
               </div>
             )}
 
-            <div
-              className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word ${
-                isUser
-                  ? 'bg-neutral-900 text-white rounded-tr-xs'
-                  : 'bg-white text-neutral-900 border border-neutral-200 rounded-tl-xs shadow-xs'
-              }`}
-            >
-              <p>{msg.content}</p>
-            </div>
+            {isUser ? (
+              <div
+                className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words bg-neutral-900 text-white rounded-tr-xs shadow-xs"
+              >
+                <p>{msg.content}</p>
+              </div>
+            ) : (
+              <div
+                className="max-w-[90%] md:max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed break-words bg-white text-neutral-900 border border-neutral-200 rounded-tl-xs shadow-xs overflow-hidden"
+              >
+                <MarkdownRenderer content={msg.content} />
+              </div>
+            )}
 
             {isUser && (
               <div

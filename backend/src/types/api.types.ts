@@ -73,3 +73,10 @@ export interface ChatRequest {
 export interface ChatResponse {
   message: Message;
 }
+
+export interface DocumentExtractionResponse {
+  fileName: string;
+  text: string;
+  pages: number;
+}
+
